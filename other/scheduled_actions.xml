@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+
+<record id="autovacuum_job_exp_report_attachment" model="ir.cron">
+    <field name="name">Expense report: Auto-vacuum super attachment pdfs (overall pdf consisting of individual expense attachments) from ir.attachment table</field>
+    <field name="model_id" ref="hr_expense.model_hr_expense"/>
+    <field name="state">code</field>
+    <field name="code">model._run_vacuum_cleaner()</field>
+    <field name='interval_number'>7</field>
+    <field name='interval_type'>days</field>
+    <field name="numbercall">-1</field>
+</record>
+
+
+</odoo>
