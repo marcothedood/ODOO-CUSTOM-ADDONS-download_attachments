@@ -4,7 +4,7 @@ Introduction
 This module installs a menuitem 'Download attachments' in the Action menu of an expense report.
 Pressing this buttons results in the collective download of all attachments in one pdf file, to disk, that will be opened in the browser.
 
-
+This module work on Odoo V16.
 
 
 Installation
