@@ -3,6 +3,7 @@ from odoo.exceptions import ValidationError
 import PyPDF2
 import base64
 import io
+from PIL import Image
 
 class DownloadExpAttachment(models.TransientModel):
     _name = "download_exp_attachment"
@@ -10,29 +11,28 @@ class DownloadExpAttachment(models.TransientModel):
 
     @api.model
     def generate_pdf(self):
-        """
-        Redirects the user to a custom controller to download the PDF.
-        """
-        # Collect the active IDs (expense reports)
         active_ids = self.env.context.get('active_ids', [])
-
-        # Redirect to the custom controller for downloading
         return {
             'type': 'ir.actions.act_url',
             'url': f'/download/expense_attachments?active_ids={",".join(map(str, active_ids))}',
             'target': 'new',
         }
 
+    def convert_image_to_pdf(self, image_data):
+        image = Image.open(io.BytesIO(image_data))
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
+        pdf_buffer = io.BytesIO()
+        image.save(pdf_buffer, 'PDF')
+        pdf_buffer.seek(0)
+        return pdf_buffer
+
     @api.model
     def generate_pdf_data(self):
-        """
-        Generates a single PDF containing all attachments related to the selected expense reports.
-        """
-        # Find related expense attachments
         related_exp_ids = self.env['hr.expense'].search([
             ('sheet_id', 'in', self.env.context.get('active_ids', []))
         ]).ids
-
+        
         atms = self.env['ir.attachment'].search([
             ('res_model', '=', 'hr.expense'),
             ('res_id', 'in', related_exp_ids)
@@ -41,25 +41,28 @@ class DownloadExpAttachment(models.TransientModel):
         if not atms:
             raise ValidationError('The report does not have attachments')
 
-        # Initialize the PDF writer
         pdfWriter = PyPDF2.PdfFileWriter()
-
-        # Process each attachment
+        
         for atm in atms:
+            decoded_data = base64.b64decode(atm.datas)
+            
             if atm.mimetype == "application/pdf":
-                # Merge PDF attachments
-                file_reader = PyPDF2.PdfFileReader(io.BytesIO(base64.b64decode(atm.datas)), strict=False)
+                file_reader = PyPDF2.PdfFileReader(io.BytesIO(decoded_data), strict=False)
                 for pageNum in range(file_reader.numPages):
-                    pageObj = file_reader.getPage(pageNum)
-                    pdfWriter.addPage(pageObj)
-
+                    pdfWriter.addPage(file_reader.getPage(pageNum))
+            
+            elif atm.mimetype in ['image/jpeg', 'image/png', 'image/jpg']:
+                try:
+                    pdf_buffer = self.convert_image_to_pdf(decoded_data)
+                    image_pdf = PyPDF2.PdfFileReader(pdf_buffer)
+                    pdfWriter.addPage(image_pdf.getPage(0))
+                except Exception as e:
+                    raise ValidationError(f'Error converting image {atm.name}: {str(e)}')
+            
             else:
-                # Skip unsupported file types
-                raise ValidationError(f'Cannot create PDF.\nAttachment {atm.name} is not a supported format')
+                raise ValidationError(f'Unsupported file format for {atm.name}')
 
-        # Generate the final PDF data in memory
         pdf_data = io.BytesIO()
         pdfWriter.write(pdf_data)
         pdf_data.seek(0)
-
         return pdf_data.getvalue()
