@@ -19,6 +19,7 @@ Prerequisites
 * pip3 install PyPDF2==1.26.0
 * pip3 install reportlab==3.5.13
 
++ pip requirements https://github.com/marcothedood/ODOO-CUSTOM-ADDONS-download_attachments/blob/16.0/requirements.txt
 
 Module installation
 
