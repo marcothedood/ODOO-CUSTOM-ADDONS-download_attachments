@@ -9,12 +9,29 @@ class DownloadAttachmentController(http.Controller):
             return werkzeug.exceptions.NotFound()
 
         active_ids = [int(id) for id in active_ids.split(',')]
+        
+        # Fetch the expense report records based on the active IDs
+        expense_reports = request.env['hr.expense.sheet'].browse(active_ids)
+        
+        if not expense_reports:
+            return werkzeug.exceptions.NotFound()
+
+        # Take the first record for naming (or customize if you need to handle multiple reports)
+        report = expense_reports[0]
+        employee_name = report.employee_id.name
+        report_id = report.id
+        
+        # Generate the filename with employee name and report ID
+        filename = f"Expense Report - {employee_name} - {report_id}.pdf"
+        
+        # Create the wizard and generate the PDF data
         wizard = request.env['download_exp_attachment'].create({})
         pdf_data = wizard.with_context(active_ids=active_ids).generate_pdf_data()
 
-        filename = 'expense_report.pdf'
+        # Set headers with the dynamically generated filename
         headers = [
             ('Content-Type', 'application/pdf'),
             ('Content-Disposition', f'attachment; filename="{filename}"'),
         ]
+        
         return request.make_response(pdf_data, headers=headers)
