@@ -16,12 +16,12 @@ class DownloadAttachmentController(http.Controller):
         if not expense_reports:
             return werkzeug.exceptions.NotFound()
 
-        # Take the first record for naming (or customize if you need to handle multiple reports)
+        # Use the first report to extract the employee's name and report ID
         report = expense_reports[0]
         employee_name = report.employee_id.name
         report_id = report.id
         
-        # Generate the filename with employee name and report ID
+        # Generate the filename dynamically with the employee name and report ID
         filename = f"Expense Report - {employee_name} - {report_id}.pdf"
         
         # Create the wizard and generate the PDF data
@@ -34,4 +34,5 @@ class DownloadAttachmentController(http.Controller):
             ('Content-Disposition', f'attachment; filename="{filename}"'),
         ]
         
+        # Return the response with the correct PDF data and headers
         return request.make_response(pdf_data, headers=headers)
